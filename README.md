@@ -118,7 +118,7 @@ Some larger EEPROMs uses 17th bits and for addressing the page identification al
 
 - Read EEPROMs with lower memory, some EEPROMs only uses 8bits to 10bits addressing (sending the device address+MSB and then LSB)
 
-- Some type of handshake to say that the Arduino is ready to start receiving the input, confirm it and then send the data. Something  like two-way handshake
+- ~~Some type of handshake to say that the Arduino is ready to start receiving the input, confirm it and then send the data. Something  like two-way handshake~~ Not really needed?
 
 
 License
