@@ -115,6 +115,33 @@ int print_control(char* option) {
 	return 0;
 }
 
+/* complex stuff not needed */
+void simple_handshake() {
+	int ajuda;
+	char buff, buffer[4];
+	while(1) {
+		/* read until see A */
+		for(read(fd, &buff, 1); buff != 'A'; read(fd, &buff, 1));
+		buffer[(ajuda = 0)] = buff;
+		read(fd, &buff, 1);
+		if(buff == 'C') {
+			ajuda = 1;
+			buffer[ajuda++] = buff;
+			break;
+		}
+		else if(buff == 'A') {
+			ajuda = 0;
+			buffer[ajuda++] = buff;
+			break;
+		}
+	}
+	/* ignore '\0' */
+	while(strncmp(buffer, "ACK+", 4) != 0) {
+		read(fd, &buff, 1);
+		buffer[ajuda++] = buff;
+	}
+}
+
 void eeprom_read(int fd, unsigned long num_bytes, char format)
 {
 	unsigned long i = 0;
@@ -144,7 +171,7 @@ void eeprom_read(int fd, unsigned long num_bytes, char format)
 						printf("0x%06lx: 0x%02x\n", i, byte);
 				}
 			}
-			fwrite(&byte, sizeof(char), 1, fp);
+			fwrite(&byte, sizeof(byte), 1, fp);
 			i++;
 			if (i == num_bytes)
 				break;
@@ -161,7 +188,7 @@ int main(int argc, char *argv[])
 	unsigned long num_bytes = 0;
 	char format = 0;
 	char *tty_name = NULL;
-
+	
 	struct termios tty_attr, tty_attr_orig;
 	speed_t i_speed, o_speed, user_speed;
 
@@ -301,6 +328,7 @@ int main(int argc, char *argv[])
 	}
 
 	printf("%s successfully configured.\n", tty_name);
+
 	sleep(3); /* Wait a second; Prevents that first byte send to arduino gets corrupted */
 	/* More time because UN0 resets on opening device
 	 * maybe using 10uF cap between reset and ground */
@@ -319,7 +347,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* Revert to original tty config */
-	tcsetattr(fd, TCSANOW, &tty_attr_orig);
+	if(tcsetattr(fd, TCSANOW, &tty_attr_orig) == -1)
+		printf("Error while reverting original tty config: %s\n", strerror(errno));
 
 	close(fd);
 	return EXIT_SUCCESS;

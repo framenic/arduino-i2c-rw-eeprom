@@ -20,7 +20,10 @@ unsigned long num_bytes;
 
 void setup() {
   Serial.begin(115200);
+
   Wire.begin();
+  
+  //Serial.write("ACK+");
 }
 
 void loop() {
@@ -58,7 +61,7 @@ void read_eeprom(unsigned long bytes) {
     Wire.requestFrom(ADDRESS, 1);
 
     //Wait till we get all the bytes
-    //while ( Wire.available() < 1) {
+    //while ( Wire.available() < 8) {
     //};
 
     if (Wire.available()) value = Wire.read();
