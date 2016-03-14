@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 		{ 0,              0,                 0,     0  }
 	};
 
-	// no argument provided
+	/* no argument provided */
 	if(argc == 1) {
 		printf("\n	NO ARGUMENTS PROVIDED!\n\n");
 		print_usage(stdout, argv[0]);

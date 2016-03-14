@@ -1,5 +1,5 @@
 /* 
- Number Name ConnectTo
+ Number  Name   ConnectTo
  1       A0     GND
  2       A1     GND
  3       A2     GND/Vcc (read datasheet)
@@ -61,7 +61,7 @@ void read_eeprom(unsigned long bytes) {
     //while ( Wire.available() < 1) {
     //};
 
-    value = Wire.read();
+    if (Wire.available()) value = Wire.read();
     Serial.write(value);
   }
 }

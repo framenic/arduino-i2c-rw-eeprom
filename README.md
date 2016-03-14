@@ -55,7 +55,9 @@ New features
 ------------
 
 On the Arduino sketch:
-- Is the same simple sketch in which the SPI interface was switched for the I2C interface (using Wire library). Some tutorials for using the Wire library, such as the [Original Wire library](https://www.pjrc.com/teensy/td_libs_Wire.html) and also other works by [breadboardtronics/EEPROM and arduino](https://breadboardtronics.wordpress.com/2013/08/27/at24c32-eeprom-and-arduino)
+- Is the same simple sketch in which the SPI interface was switched for the I2C interface (using Wire library).
+	- Some tutorials for using the Wire library, such as the [Original Wire library](https://www.pjrc.com/teensy/td_libs_Wire.html) and also other works by [breadboardtronics/EEPROM and arduino](https://breadboardtronics.wordpress.com/2013/08/27/at24c32-eeprom-and-arduino).
+	- Também existem tutorias em PT [aqui](http://lusorobotica.com/index.php/topic,33.0.html) =) 
 - The number of bytes passed for input was increased from 4 to 7, allowing to read up to 9216Kbytes (in this case it can only read up to 64Kbytes, it uses 5 bytes => 64Kbytes * 1024 = 5bytes used in the Arduino input)
 
 On the C program there are new features such as:
