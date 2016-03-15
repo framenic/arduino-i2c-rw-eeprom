@@ -80,7 +80,7 @@ I have tested the program with an Arduino UNO on Debian@3.16.0-4-amd64, but it s
 
 
 ### Compatible EEPROMs
-I've tested the Arduino sketch with:
+I've tested with following devices:
  - GT24C64
  - AT24C32
  - 24FC1025 (only 64Kbytes readed [more info above](#todo))
@@ -111,7 +111,7 @@ There are more than 1 way to read more than 64Kbytes, for instance [24FC1025](ht
 
 Some larger EEPROMs uses 17th bits and for addressing the page identification also uses a special bit (bit 4) all this in the slave address, e.g. [ST 2-Mbi](http://www.st.com/web/en/resource/technical/document/datasheet/CD00290537.pdf)
 
-* To make the change, with so many different options depending on the device, is better to change according to their need on teh Arduino side. *
+*To make the change, with so many different options depending on the device, is better to change according to their need on the Arduino side.*
 
 
 
