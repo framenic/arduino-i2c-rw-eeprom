@@ -116,7 +116,7 @@ int print_control(char* option) {
 }
 
 /* complex stuff not needed */
-void simple_handshake() {
+void simple_handshake(int fd) {
 	int ajuda;
 	char buff, buffer[4];
 	while(1) {

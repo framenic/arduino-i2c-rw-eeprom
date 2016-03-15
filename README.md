@@ -81,9 +81,10 @@ I have tested the program with an Arduino UNO on Debian@3.16.0-4-amd64, but it s
 
 ### Compatible EEPROMs
 I've tested the Arduino sketch with:
+ - GT24C64
  - AT24C32
  - 24FC1025 (only 64Kbytes readed [more info above](#todo))
- - Other's I2C EEPROMs compatible with the read protocol **(or feel free to change yourself)** as long as it can read ONLY READ 64Kbytes [more info above](#todo)
+ - Other's I2C EEPROMs compatible with the read protocol **(or feel free to change yourself)** as long as it can ONLY READ 64Kbytes [more info above](#todo)
 
 
 
@@ -106,11 +107,11 @@ TODO
 
 To read more than 64Kbytes a special bit must be set. Since the protocol only sends 16bits (8bits as MSB and 8bits as LSB) for selecting the address, therefore can only read from address 0000h to FFFFh (64Kbytes).
 
-There are more than 1 way to read more than 64Kbyes, for instance [24FC1025](http://ww1.microchip.com/downloads/en/DeviceDoc/21941B.pdf) uses a Block Select Bit (bit 3) in the slave address, but [CAT24M01](https://www.insidegadgets.com/wp-content/uploads/2015/07/CAT24M01.pdf) has the bit in a different position (bit 1), and other ways...(For this last one there's already a solution [Switching to 1Mbit EEPROM](https://www.insidegadgets.com/2015/07/27/building-the-mini-temp-logger-part-2-ldo-capacitors-checks-testing-i2c-timings-and-using-eeprom-page-writes/)
+There are more than 1 way to read more than 64Kbytes, for instance [24FC1025](http://ww1.microchip.com/downloads/en/DeviceDoc/21941B.pdf) uses a Block Select Bit (bit 3) in the slave address, but [CAT24M01](https://www.insidegadgets.com/wp-content/uploads/2015/07/CAT24M01.pdf) has the bit in a different position (bit 1), and other ways...(For this last one there's already a solution [Switching to 1Mbit EEPROM](https://www.insidegadgets.com/2015/07/27/building-the-mini-temp-logger-part-2-ldo-capacitors-checks-testing-i2c-timings-and-using-eeprom-page-writes/)
 
 Some larger EEPROMs uses 17th bits and for addressing the page identification also uses a special bit (bit 4) all this in the slave address, e.g. [ST 2-Mbi](http://www.st.com/web/en/resource/technical/document/datasheet/CD00290537.pdf)
 
-*To make the change, with so many different options depending on the device, is better to change according to their need.*
+* To make the change, with so many different options depending on the device, is better to change according to their need on teh Arduino side. *
 
 
 
@@ -118,7 +119,7 @@ Some larger EEPROMs uses 17th bits and for addressing the page identification al
 
 - Read EEPROMs with lower memory, some EEPROMs only uses 8bits to 10bits addressing (sending the device address+MSB and then LSB)
 
-- ~~Some type of handshake to say that the Arduino is ready to start receiving the input, confirm it and then send the data. Something  like two-way handshake~~ Not really needed?
+- ~~Some type of handshake to say that the Arduino is ready to start receiving the input, confirm it and then send the data. Something  like two-way handshake~~ Not really needed!?
 
 
 License
