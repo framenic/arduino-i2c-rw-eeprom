@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 				file_name = optarg;
 				break;
 			case 'p':
-				print_read = print_control(optarg);
+				print_read = print_content(optarg);
 				break;
 			case 'h':
 				print_usage(stdout, argv[0]);

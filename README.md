@@ -65,7 +65,7 @@ On the C program there are new features such as:
 - While reading the memory it's content may not be printed to the terminal (since it was annoying printing the whole memory therefore fill in the terminal)
 - It can read up to 64Kbytes[more info above](#todo) with the program converting Kbytes to bytes, e.g. input 50k => 51200 bytes
 - The overall program was enhanced, by preventing some errors in the user's input
-- Still work's with SPI EEPROMs [ ** must change on Arduino**: `for(i = 0; i < 4; i++)` => `for (i = 0; i < 7; i++)` ]
+- Still work's with SPI EEPROMs (**must change on Arduino:** `for(i = 0; i < 4; i++)` => `for (i = 0; i < 7; i++)`)
 
 
 
