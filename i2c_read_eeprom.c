@@ -109,37 +109,10 @@ unsigned long get_bytes(char* bytes)
 	return res;
 }
 
-int print_control(char* option) {
+int print_content(char* option) {
 	if((strcmp(option, "y") == 0) || (strcmp(option, "yes") == 0))
 		return 1;
 	return 0;
-}
-
-/* complex stuff not needed */
-void simple_handshake(int fd) {
-	int ajuda;
-	char buff, buffer[4];
-	while(1) {
-		/* read until see A */
-		for(read(fd, &buff, 1); buff != 'A'; read(fd, &buff, 1));
-		buffer[(ajuda = 0)] = buff;
-		read(fd, &buff, 1);
-		if(buff == 'C') {
-			ajuda = 1;
-			buffer[ajuda++] = buff;
-			break;
-		}
-		else if(buff == 'A') {
-			ajuda = 0;
-			buffer[ajuda++] = buff;
-			break;
-		}
-	}
-	/* ignore '\0' */
-	while(strncmp(buffer, "ACK+", 4) != 0) {
-		read(fd, &buff, 1);
-		buffer[ajuda++] = buff;
-	}
 }
 
 void eeprom_read(int fd, unsigned long num_bytes, char format)
@@ -193,12 +166,12 @@ int main(int argc, char *argv[])
 	speed_t i_speed, o_speed, user_speed;
 
 	extern char *optarg;
-	const char* short_options = "t:b:f:n:o:p:h";
+	const char* short_options = "t:b:n:f:o:p:h";
 	const struct option long_options[] = {
 		{ "tty",          required_argument, NULL, 't' },
 		{ "baudrate",     required_argument, NULL, 'b' },
-		{ "format",       required_argument, NULL, 'f' },
 		{ "num_bytes",    required_argument, NULL, 'n' },
+		{ "format",       required_argument, NULL, 'f' },
 		{ "output_name",  required_argument, NULL, 'o' },
 		{ "print",        required_argument, NULL, 'p' },
 		{ "help",         no_argument,       NULL, 'h' },
@@ -222,11 +195,11 @@ int main(int argc, char *argv[])
 				baudrate = to_termios_baudrate(atoi(optarg));
 				baudrate_by_user = 1;
 				break;
-			case 'f':
-				format = optarg[0];
-				break;
 			case 'n':
 				num_bytes = get_bytes(optarg);
+				break;
+			case 'f':
+				format = optarg[0];
 				break;
 			case 'o':
 				file_name = optarg;
@@ -262,6 +235,12 @@ int main(int argc, char *argv[])
 		printf("You did not provide a baudrate, defaulting to 115200.\n");
 	user_speed = (speed_t)baudrate;
 
+	if (!num_bytes) {
+		printf("\nSorry, you did not provide how many bytes you "
+		       "want to read from the EEPROM.\n\n");
+		print_usage(stdout, argv[0]);
+	}
+
 	if (!format) {
 		printf("You did not specified a output format, defaulting to "
 		       "h = hexadecimal.\n");
@@ -269,12 +248,6 @@ int main(int argc, char *argv[])
 	}
 	else if (format != 'a' && format != 'd' && format != 'h') {
 		printf("\nSorry, invalid output format specified.\n\n");
-		print_usage(stdout, argv[0]);
-	}
-
-	if (!num_bytes) {
-		printf("\nSorry, you did not provide how many bytes you "
-		       "want to read out from the eeprom.\n\n");
 		print_usage(stdout, argv[0]);
 	}
 

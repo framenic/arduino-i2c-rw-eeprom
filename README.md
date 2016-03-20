@@ -55,17 +55,17 @@ New features
 ------------
 
 On the Arduino sketch:
-- Is the same simple sketch in which the SPI interface was switched for the I2C interface (using Wire library).
-	- Some tutorials for using the Wire library, such as the [Original Wire library](https://www.pjrc.com/teensy/td_libs_Wire.html) and also other works by [breadboardtronics/EEPROM and arduino](https://breadboardtronics.wordpress.com/2013/08/27/at24c32-eeprom-and-arduino).
-	- Também existem tutorias em PT [aqui](http://lusorobotica.com/index.php/topic,33.0.html) =) 
-- The number of bytes passed for input was increased from 4 to 7, allowing to read up to 9216Kbytes (in this case it can only read up to 64Kbytes, it uses 5 bytes => 64Kbytes * 1024 = 5bytes used in the Arduino input)
+- Is the same simple sketch in which the SPI interface was switched for the I2C interface (Wire library).
+	- Some tutorials on using the Wire library, such as the [Wire library](https://www.pjrc.com/teensy/td_libs_Wire.html) and also other works by [breadboardtronics/EEPROM and arduino](https://breadboardtronics.wordpress.com/2013/08/27/at24c32-eeprom-and-arduino).
+	- Também existem tutorias em PT, [exemplo](http://lusorobotica.com/index.php/topic,33.0.html) =) 
+- The number of bytes passed for input was increased from 4 to 7, allowing to read up to 9216Kbytes (in this case it can only read up to 64Kbytes, using 5 bytes => 64Kbytes * 1024 = 5bytes used in the Arduino input)
 
 On the C program there are new features such as:
 - It can save the output to a given file name (the user gives the name it wants)
 - While reading the memory it's content may not be printed to the terminal (since it was annoying printing the whole memory therefore fill in the terminal)
 - It can read up to 64Kbytes[more info above](#todo) with the program converting Kbytes to bytes, e.g. input 50k => 51200 bytes
 - The overall program was enhanced, by preventing some errors in the user's input
-- Still work's with SPI EEPROMs  =)
+- Still work's with SPI EEPROMs [ ** must change on Arduino**: `for(i = 0; i < 4; i++)` => `for (i = 0; i < 7; i++)` ]
 
 
 
@@ -75,7 +75,7 @@ I have tested the program with an Arduino UNO on Debian@3.16.0-4-amd64, but it s
 
 
 ### TTY device names
-- In Mac should be the same `/dev/cu.usbmodem14931` (BUT not tested by me)
+- In Mac should be the same as the original `/dev/cu.usbmodem14931` (BUT not tested by me)
 - In Linux is `/dev/ttyACM*`, where * should be 0. (you need to be root, or be in [group-mode](http://playground.arduino.cc/Linux/All#Permission))
 
 
@@ -84,7 +84,7 @@ I've tested with following devices:
  - GT24C64
  - AT24C32
  - 24FC1025 (only 64Kbytes readed [more info above](#todo))
- - Other's I2C EEPROMs compatible with the read protocol **(or feel free to change yourself)** as long as it can ONLY READ 64Kbytes [more info above](#todo)
+ - Other's I2C EEPROMs compatible with the read protocol **(or feel free to change yourself)** as long as it can ONLY READ 64Kbytes ([more info above](#todo))
 
 
 
@@ -107,17 +107,17 @@ TODO
 
 To read more than 64Kbytes a special bit must be set. Since the protocol only sends 16bits (8bits as MSB and 8bits as LSB) for selecting the address, therefore can only read from address 0000h to FFFFh (64Kbytes).
 
-There are more than 1 way to read more than 64Kbytes, for instance [24FC1025](http://ww1.microchip.com/downloads/en/DeviceDoc/21941B.pdf) uses a Block Select Bit (bit 3) in the slave address, but [CAT24M01](https://www.insidegadgets.com/wp-content/uploads/2015/07/CAT24M01.pdf) has the bit in a different position (bit 1), and other ways...(For this last one there's already a solution [Switching to 1Mbit EEPROM](https://www.insidegadgets.com/2015/07/27/building-the-mini-temp-logger-part-2-ldo-capacitors-checks-testing-i2c-timings-and-using-eeprom-page-writes/)
+There are more than 1 way to read more than 64Kbytes, for instance [24FC1025](http://ww1.microchip.com/downloads/en/DeviceDoc/21941B.pdf) uses a Block Select Bit (bit 3) in the slave address, but [CAT24M01](https://www.insidegadgets.com/wp-content/uploads/2015/07/CAT24M01.pdf) has the bit in a different position (bit 1), and other ways... (this last one there's already a solution [Switching to 1Mbit EEPROM](https://www.insidegadgets.com/2015/07/27/building-the-mini-temp-logger-part-2-ldo-capacitors-checks-testing-i2c-timings-and-using-eeprom-page-writes/))
 
 Some larger EEPROMs uses 17th bits and for addressing the page identification also uses a special bit (bit 4) all this in the slave address, e.g. [ST 2-Mbi](http://www.st.com/web/en/resource/technical/document/datasheet/CD00290537.pdf)
 
-*To make the change, with so many different options depending on the device, is better to change according to their need on the Arduino side.*
+**To make the change, with so many different options depending on the device, it's better to change according to their need on the Arduino side.**
 
 
 
 - Read from a start address to a end address
 
-- Read EEPROMs with lower memory, some EEPROMs only uses 8bits to 10bits addressing (sending the device address+MSB and then LSB)
+- Read smaller memory EEPROMs, some only uses 8 bits to 10 bits addressing (sending the device address+MSB and then LSB)
 
 - ~~Some type of handshake to say that the Arduino is ready to start receiving the input, confirm it and then send the data. Something  like two-way handshake~~ Not really needed!?
 
