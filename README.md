@@ -58,14 +58,14 @@ On the Arduino sketch:
 - Is the same simple sketch in which the SPI interface was switched for the I2C interface (Wire library).
 	- Some tutorials on using the Wire library, such as the [Wire library](https://www.pjrc.com/teensy/td_libs_Wire.html) and also other works by [breadboardtronics/EEPROM and arduino](https://breadboardtronics.wordpress.com/2013/08/27/at24c32-eeprom-and-arduino).
 	- Também existem tutorias em PT, [exemplo](http://lusorobotica.com/index.php/topic,33.0.html) =) 
-- The number of bytes passed for input was increased from 4 to 7, allowing to read up to 9216Kbytes (in this case it can only read up to 64Kbytes, using 5 bytes => 64Kbytes * 1024 = 5bytes used in the Arduino input)
+- The number of bytes passed for input was increased from 4 to 6, allowing to read up to 2Mbits
 
 On the C program there are new features such as:
 - It can save the output to a given file name (the user gives the name it wants)
 - While reading the memory it's content may not be printed to the terminal (since it was annoying printing the whole memory therefore fill in the terminal)
-- It can read up to 64Kbytes[more info above](#todo) with the program converting Kbytes to bytes, e.g. input 50k => 51200 bytes
+- It can read from input n Kbytes with the program converting Kbytes to bytes, e.g. input 50k => 51200 bytes
 - The overall program was enhanced, by preventing some errors in the user's input
-- Still work's with SPI EEPROMs (**must change on Arduino:** `for(i = 0; i < 4; i++)` => `for (i = 0; i < 7; i++)`)
+- ~~Still work's with SPI EEPROMs~~
 
 
 
@@ -83,8 +83,8 @@ I have tested the program with an Arduino UNO on Debian@3.16.0-4-amd64, but it s
 I've tested with following devices:
  - GT24C64
  - AT24C32
- - 24FC1025 (only 64Kbytes readed [more info above](#todo))
- - Other's I2C EEPROMs compatible with the read protocol **(or feel free to change yourself)** as long as it can ONLY READ 64Kbytes ([more info above](#todo))
+ - 24FC1025 ~~(only 64Kbytes readed [more info above](#todo))~~ FIXING
+ - Other's I2C EEPROMs compatible with the read protocol **(or feel free to change yourself)** ~~as long as it can ONLY READ 64Kbytes ([more info above](#todo))~~FIXING
 
 
 
@@ -99,21 +99,16 @@ To read 64Kbytes and save it under the name large.bin without printing it's cont
 To read 10Kbytes as text(ascii) and save it under the name readme.txt without printing it's content:
  - `./i2c_read_eeprom -t /dev/ttyACM0 -n 10k -o large.txt -f a -p n`
 
+Add new examples
 
 
 TODO
 ------------
 - **Read more than 64Kbytes:**
 
-To read more than 64Kbytes a special bit must be set. Since the protocol only sends 16bits (8bits as MSB and 8bits as LSB) for selecting the address, therefore can only read from address 0000h to FFFFh (64Kbytes).
-
-There are more than 1 way to read more than 64Kbytes, for instance [24FC1025](http://ww1.microchip.com/downloads/en/DeviceDoc/21941B.pdf) uses a Block Select Bit (bit 3) in the slave address, but [CAT24M01](https://www.insidegadgets.com/wp-content/uploads/2015/07/CAT24M01.pdf) has the bit in a different position (bit 1), and other ways... (this last one there's already a solution [Switching to 1Mbit EEPROM](https://www.insidegadgets.com/2015/07/27/building-the-mini-temp-logger-part-2-ldo-capacitors-checks-testing-i2c-timings-and-using-eeprom-page-writes/))
-
-Some larger EEPROMs uses 17th bits and for addressing the page identification also uses a special bit (bit 4) all this in the slave address, e.g. [ST 2-Mbi](http://www.st.com/web/en/resource/technical/document/datasheet/CD00290537.pdf)
+~~To read more than 64Kbytes a special bit must be set. Since the protocol only sends 16bits (8bits as MSB and 8bits as LSB) for selecting the address, therefore can only read from address 0000h to FFFFh (64Kbytes).~~ FIXING
 
 **To make the change, with so many different options depending on the device, it's better to change according to their need on the Arduino side.**
-
-
 
 - Read from a start address to a end address
 
