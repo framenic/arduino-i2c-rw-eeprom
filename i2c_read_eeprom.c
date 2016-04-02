@@ -29,31 +29,11 @@
 #include <termios.h>
 #include <getopt.h>
 
+#include "eeprom.h"
+
+int print;
 int ctrlc = 0;
-int print = -1;
 char *file_name = NULL;
-
-typedef struct {
-	char *name;
-	int size; /* bytes */
-	unsigned char type; /* send to Arduino */
-} info_eeprom;
-
-const info_eeprom eeprom_ids[] = {	
-	/* > 64Kbytes devices */
-	/* first type */
-	{ "24XX1026", 131072, 1 },
-	{ "CAT24M01", 131072, 1 },
-	{ "AT24CM01", 131072, 1 },
-	{ "M24M01", 131072, 1 },
-	
-	/* second type */
-	{ "24XX1025", 131072, 2 },
-	
-	/* third type */
-	{ "M24M02", 262144, 3 },
-	{ "AT24CM02", 262144, 3 },
-};
 
 void handle_sig(int signum)
 {
@@ -90,51 +70,39 @@ int to_termios_baudrate(unsigned int baudrate)
 	}
 }
 
-static void print_usage(const char *program_name)
+static void print_usage(const char *program_name, int flag_print_eeprom)
 {
-	printf("Usage: %s [OPTIONS...]\n", program_name);
+	printf("\nUsage: %s [OPTIONS...]\n", program_name);
 	printf("\n");
 	printf("  -t, --tty=/dev/*         tty the arduino is connected to.\n");
 	printf("  -b, --baudrate=N         baudrate of tty. Default sketch is 115200.\n");
-	printf("  -n, --num_bytes=N[k]     the number of bytes or Kbytes to read from the tty.\n");
-	printf("  -d, --dev_type=type      read datasheet and see compatible type as number 1-3.\n");
+	printf("  -n, --num-bytes=N[k]     the number of bytes or Kbytes to read from the tty.\n");
+	printf("  -d, --dev-type=type      read datasheet and see compatible type then set number 1-3 [REQUIRED FOR READING MORE THAN 64Kbytes].\n");
 	printf("  -o, --output-file=FILE   name to save FILE. Default is \"eeprom.bin\".\n");
 	printf("  -f, --format=format      output format (a = ascii, d = dec, h = hex). Default is hexadecimal.\n");
 	printf("  -p, --print=y/n          print the read content to screen. Default is yes.\n");
 	printf("  -h, --help               print this screen.\n");
+	if(flag_print_eeprom)
+		print_eeprom();
 	printf("\nExamples:\n");
 	printf("  %s -t /dev/ttyACM0 -n 2k\n", program_name);
 	printf("  %s -t /dev/ttyACM0 -n 512 -o teste.bin\n", program_name);
-	printf("  %s -t /dev/ttyACM0 -n 256K -d 24FC1025 -o EEPROM.bin\n", program_name);
+	printf("  %s -t /dev/ttyACM0 -n 128K -d 2\n", program_name);
+	printf("  %s -t /dev/ttyACM0 -n 256K -d 1 -o file.hex\n", program_name);
 	exit(EXIT_FAILURE);
-}
-
-static void print_eeprom()
-{
-	printf("Read the datasheet of the EEPROM and identify the addressing type\n");
-	printf("\n");
-	printf("1 | 0 | 1 | 0 | A2 | A1 | B0/A16  =>  type 1\n");
-	printf("	Devices:\n");
-	printf("		24XX1025\n		CAT24M01\n		AT24CM01\n		M24M01\n\n");
-	printf("1 | 0 | 1 | 0 | B0/A16 | A1 | A0  =>  type 2 (e.g. 24XX1025)\n");
-	printf("	Devices:\n");
-	printf("		24XX1025\n\n");
-	printf("1 | 0 | 1 | 0 | A2 | A17 | A16  =>  type 3 (e.g. AT24CM02)\n");
-	printf("	Devices:\n");
-	printf("		M24M02\n		AT24CM02\n\n");
 }
 
 int transmit_num_bytes(int fd, unsigned long num_bytes, unsigned char type)
 {
 	unsigned int i;
-	unsigned char num_bytes_array[7];
+	unsigned char num_bytes_array[5];
 
-	/* we only need 6 bytes to send the size to read */
-	for (i = 0; i < 6; i++)
+	/* we only need 4 bytes to send the size to read */
+	for (i = 0; i < 4; i++)
 		num_bytes_array[i] = (unsigned char)((num_bytes >> (i * 8)) & 0xff);
 
 	/* and then put type of read/device */
-	num_bytes_array[6] = type;
+	num_bytes_array[i] = type;
 	
 	return write(fd, num_bytes_array, sizeof(num_bytes_array));
 }
@@ -147,13 +115,13 @@ unsigned long get_bytes(char* bytes)
 		memcpy(temp_bytes, bytes, strlen(bytes) - 1);
 		res = atoi(temp_bytes) * 1024; /* convert to bytes */
 	}
-	else {
+	else
 		res = atoi(bytes);
-	}
+	printf("================================= %ld %ld\n", res, res*8);
 	return res;
 }
 
-int print_content(char* option) {
+int print_option(char* option) {
 	if((strcmp(option, "y") == 0) || (strcmp(option, "yes") == 0))
 		return 1;
 	return 0;
@@ -173,7 +141,7 @@ int eeprom_read(int fd, unsigned long num_bytes, char format)
 			break;
 		}
 
-		if(print == 1) {
+		if(print) {
 			switch (format) {
 				case 'a':
 					printf("0x%06lx: %c\n", i, byte);
@@ -186,6 +154,7 @@ int eeprom_read(int fd, unsigned long num_bytes, char format)
 					break;
 				default:
 					printf("0x%06lx: 0x%02x\n", i, byte);
+					break;
 			}
 		}
 		
@@ -207,24 +176,24 @@ int eeprom_read(int fd, unsigned long num_bytes, char format)
 
 int main(int argc, char *argv[])
 {
-	int fd, next_option;
-	int baudrate = B115200, baudrate_by_user = 0;
+	int fd, next_option, baudrate = B115200;
 	unsigned long num_bytes = 0;
 	char format = 0;
 	char *tty_name = NULL;
 	unsigned char dev_type = 0;
+	unsigned char baudrate_user = 0, format_user = 0, file_name_user = 0, print_user = 0;
 	
 	struct termios tty_attr, tty_attr_orig;
 	speed_t i_speed, o_speed, user_speed;
 
 	extern char *optarg;
-	const char* short_options = "t:b:n:o:f:p:h";
+	const char* short_options = "t:b:n:d:o:f:p:h";
 	const struct option long_options[] = {
 		{ "tty",          required_argument, NULL, 't' },
 		{ "baudrate",     required_argument, NULL, 'b' },
-		{ "num_bytes",    required_argument, NULL, 'n' },
-		//device type
-		{ "output_name",  required_argument, NULL, 'o' },
+		{ "num-bytes",    required_argument, NULL, 'n' },
+		{ "dev-type",     required_argument, NULL, 'd' },
+		{ "output-name",  required_argument, NULL, 'o' },
 		{ "format",       required_argument, NULL, 'f' },
 		{ "print",        required_argument, NULL, 'p' },
 		{ "help",         no_argument,       NULL, 'h' },
@@ -234,7 +203,7 @@ int main(int argc, char *argv[])
 	/* no argument provided */
 	if(argc == 1) {
 		printf("\n	NO ARGUMENTS PROVIDED!\n\n");
-		print_usage(argv[0]);
+		print_usage(argv[0], 0);
 		return EXIT_FAILURE;
 	}
 
@@ -246,28 +215,31 @@ int main(int argc, char *argv[])
 				break;
 			case 'b':
 				baudrate = to_termios_baudrate(atoi(optarg));
-				baudrate_by_user = 1;
+				baudrate_user = 1;
 				break;
 			case 'n':
 				num_bytes = get_bytes(optarg);
 				break;
 			case 'd':
-				// set type dev_type = set_type(optarg);
+				dev_type = atoi(optarg);
 				break;
 			case 'o':
 				file_name = optarg;
+				file_name_user = 1;
 				break;
 			case 'f':
 				format = optarg[0];
+				format_user = 1;
 				break;
 			case 'p':
-				print = print_content(optarg);
+				print = print_option(optarg);
+				print_user = 1;
 				break;
 			case 'h':
-				print_usage(argv[0]);
+				print_usage(argv[0], 1);
 				break;
 			case '?':
-				print_usage(argv[0]);
+				print_usage(argv[0], 1);
 				break;
 			case -1:
 				break;
@@ -280,53 +252,55 @@ int main(int argc, char *argv[])
 	if (!tty_name) {
 		printf("\nSorry, you did not provide the name of "
 		       "your arduino's tty device.\n\n");
-		print_usage(argv[0]);
+		print_usage(argv[0], 0);
 	}
 
 	if (baudrate < 0) {
 		printf("\nSorry, you did not provide a valid baudrate.\n\n");
-		print_usage(argv[0]);
+		print_usage(argv[0], 0);
 	}
-	else if (!baudrate_by_user)
-		printf("You did not provide a baudrate, defaulting to 115200.\n");
 	user_speed = (speed_t)baudrate;
 
 	if (!num_bytes) {
 		printf("\nSorry, you did not provide how many bytes you "
 		       "want to read from the EEPROM.\n\n");
-		print_usage(argv[0]);
+		print_usage(argv[0], 0);
 	}
 	
-	if ((num_bytes > 65536) &&  !dev_type) {
+	if (((num_bytes > 65536) &&  !dev_type) || (dev_type > 5)) {
 		printf("\nSorry, you did not provide the device type "
-		       "required for reading more than 64Kbytes.\n\n");
-		print_eeprom();
-		/* print_usage(argv[0]); */
+			"required for reading more than 64Kbytes.\n");
+		print_usage(argv[0], 1);
 	}
 
-	if (!format) {
-		printf("You did not specified a output format, defaulting to "
-		       "h = hexadecimal.\n");
+	if (!format)
 		format = 'h';
-	}
 	else if (format != 'a' && format != 'd' && format != 'h') {
 		printf("\nSorry, invalid output format specified.\n\n");
-		print_usage(argv[0]);
+		print_usage(argv[0], 0);
 	}
 
-	if (!file_name) {
-		printf("You did not provide a output name, defaulting to "
-		       "\"eeprom.bin\".\n");
+	if (!file_name)
 		file_name = "eeprom.bin";
-	}
 
-	if (print == -1) {
-		printf("You did not provide a print option, defaulting to "
-		       "yes.\n");
+	if (!print_user)
 		print = 1;
-	}
 
-	/* Install ctrl-c signal handler */
+	/* After setup parameters print if any fallback to default */
+	if (!baudrate_user)
+		printf("You did not provide a baudrate, defaulting to 115200.\n");
+	if (!file_name_user)
+			printf("You did not provide a output name, defaulting to "
+		       "\"eeprom.bin\".\n");
+	if (!format_user)
+		printf("You did not specified a output format, defaulting to "
+		       "h = hexadecimal.\n");
+	if(!print_user)
+		printf("You did not provide a print option, defaulting to yes.\n");
+	//if((num_bytes <= 65536) && dev_type)
+		//printf("Ignoring device type defined!!!\n");
+
+	/* Install CTRL^C signal handler */
 	sigaction(SIGINT, &int_handler, 0);
 
 	/* Open tty */
@@ -365,11 +339,11 @@ int main(int argc, char *argv[])
 
 	printf("%s successfully configured.\n", tty_name);
 
-	sleep(1); /* Wait a second; Prevents that first byte send to arduino gets corrupted */
+	sleep(3); /* Wait a second; Prevents that first byte send to arduino gets corrupted */
 	/* More time because UN0 resets on opening device
 	 * maybe using 10uF cap between reset and ground */
 
-	if(print == 1)
+	if(print)
 		printf("Starting to read.\n\n");
 
 	if ((transmit_num_bytes(fd, num_bytes, dev_type)) < 0) {
@@ -380,7 +354,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (eeprom_read(fd, num_bytes, format) != 0) {
-		printf("Going to remove file with errors\n");
+		printf("Going to remove file with errors\n"); /* even with CTRL^C */
 
 		if (remove(file_name) != 0)
 			printf("Unable to delete %s: %s\n", file_name, strerror(errno));

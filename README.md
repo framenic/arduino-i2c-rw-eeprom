@@ -10,10 +10,13 @@ Table of contents
 - [Introduction](#introduction)
 - [How to](#how-to)
 - [New features](#new-features)
+- [Devices address type](#devices-address-type)
 - [Compatibility](#compatibility)
 	- [TTY device names](#tty-device-names)
 	- [Compatible EEPROMs](#compatible-eeproms)
-- [Examples](#examples)
+- [Example](#example)
+	- [Setup](#setup)
+	- [Reading EEPROMs](#reading-eeproms)
 - [TODO](#todo)
 - [License](#license)
 
@@ -29,9 +32,9 @@ This project is based on the original work by: [andre-richter/arduino-spi-read-e
 Introduction
 ------------
 
-While I was searching for a way to dump an entire I2C EEPROM to save it as a binary file on the PC, I stumbled on the original work, mentioned above, for SPI EEPROMs.
+While I was searching for a way to dump an entire I2C EEPROM and save it as a binary file on the PC, I stumbled on the original work, mentioned above, for SPI EEPROMs.
 
-As it uses a small program written in C, I decided to use this as a base to develop for I2C devices.
+As it uses a small program written in C, I decided to use it as a base for my work with I2C devices.
 
 
 
@@ -64,8 +67,32 @@ On the C program there are new features such as:
 - It can save the output to a given file name (the user gives the name it wants)
 - While reading the memory it's content may not be printed to the terminal (since it was annoying printing the whole memory therefore fill in the terminal)
 - It can read from input n Kbytes with the program converting Kbytes to bytes, e.g. input 50k => 51200 bytes
+- The type of addressing of the device can be specified with `-d` or `--dev-type` allowing to read more than 64Kbytes
 - The overall program was enhanced, by preventing some errors in the user's input
 - ~~Still work's with SPI EEPROMs~~
+
+
+
+Devices address type
+----------------------
+Since there are multiple ways to read the whole content of EEPROM bigger than 64Kbytes or 512Kbit, a special command must be set.
+
+### EEPROM type 1
+Must set flag `-d 1` or `--dev-type=1`
+Some examples are: 24XX1026, M24M01, CAT24M01, AT24CM01, ...
+![type_1](https://ch3302files.storage.live.com/y3mxZhsnuO_9DcPUrTW97842UpC7beExyoSk3QyEiGdFp9on653JUQhX0QoWSAIo19gzfJeNC1Edyqk5dGZJx2DHy5K0nxpYT4s0PxcIIIK5smDBg-nZVA6gDzKD65T4x18ZSLVVDvAN-CdaRsIX0jMaEfk7MJNn6LHItQ4uzhEiTU/EEPROM1.png?psid=1&width=412&height=212 "EEPROM type 1")
+
+
+### EEPROM type 2
+Must set flag `-d 2` or `--dev-type=2`
+Some examples are: 24XX1025 ...
+![type_1](https://ch3302files.storage.live.com/y3mgOuztKNg2NeLvU86fG5qpaJqoo2f_xQ480PDv6Es6-Dxom6_HsFbfwnRAnFu59JinNi6fsCEnvU76W7uzpGoU-EIvgO3ZI1iJTkZpKbnjFe3C3E2GqODWwr1EwRV4FWYdQ_NHIfdFpaMjg7frnRqjgDQserS-ABrPoR0S7aomPM/EEPROM2.png?psid=1&width=412&height=212 "EEPROM type 2")
+
+
+### EEPROM type 3
+Must set flag `-d 3` or `--dev-type=3`
+Some examples are: AT24CM02, M24M02, ...
+![type_1](https://ch3302files.storage.live.com/y3m9FKJ-_urTKHPavZ8iY2AVayBbwfM4O2oof9KPto8IpfNu6LmP03lnkbRsRHO2Z8-nS2jUcp2eBMn4_hC5lA3iBWWTCadRsXLMT4Uic7PaKfO9XkmmeXZ6i5mOLy9waJusXbNrCAPHRmXlMJQhoOJjti_RkNuMWOScSgtFpIt99g/EEPROM3.png?psid=1&width=412&height=212 "EEPROM type 3")
 
 
 
@@ -80,18 +107,29 @@ I have tested the program with an Arduino UNO on Debian@3.16.0-4-amd64, but it s
 
 
 ### Compatible EEPROMs
-I've tested with following devices:
+I've tested with the following devices:
  - GT24C64
  - AT24C32
- - 24FC1025 ~~(only 64Kbytes readed [more info above](#todo))~~ FIXING
- - Other's I2C EEPROMs compatible with the read protocol **(or feel free to change yourself)** ~~as long as it can ONLY READ 64Kbytes ([more info above](#todo))~~FIXING
+ - 24FC1025
+ - Other's I2C EEPROMs compatible with the read protocol (or feel free to do the necessary changes)
 
 
 
-Examples
+Example
 ------------
-To read 1Kbytes and save it under the name test.bin and printing it's content:
- - `./i2c_read_eeprom -t /dev/ttyACM0 -n 1k -o test.bin`
+
+
+### Setup
+```
+$ git clone git@github.com:DMRodrigues/arduino-i2c-read-eeprom.git
+$ cd arduino-i2c-read-eeprom
+$ make
+```
+
+
+### Reading EEPROMs
+To read 1024bits and save it under the name test.bin and printing it's content:
+ - `./i2c_read_eeprom -t /dev/ttyACM0 -n 128`
 
 To read 64Kbytes and save it under the name large.bin without printing it's content:
  - `./i2c_read_eeprom -t /dev/ttyACM0 -n 64k -o large.bin -p n`
@@ -99,22 +137,24 @@ To read 64Kbytes and save it under the name large.bin without printing it's cont
 To read 10Kbytes as text(ascii) and save it under the name readme.txt without printing it's content:
  - `./i2c_read_eeprom -t /dev/ttyACM0 -n 10k -o large.txt -f a -p n`
 
-Add new examples
+To read 1024Kbits from an 25XX1025 and save it without printing it's content:
+ - `./i2c_read_eeprom -t /dev/ttyACM0 -n 128k -p n -d 2`
+
+To read 1024Kbits from an 25XX1026 and save it without printing it's content:
+ - `./i2c_read_eeprom -t /dev/ttyACM0 -n 128k -p n -d 1`
+
+Afterwards, you can edit the data with your favourite hex editor.
+
 
 
 TODO
 ------------
-- **Read more than 64Kbytes:**
-
-~~To read more than 64Kbytes a special bit must be set. Since the protocol only sends 16bits (8bits as MSB and 8bits as LSB) for selecting the address, therefore can only read from address 0000h to FFFFh (64Kbytes).~~ FIXING
-
-**To make the change, with so many different options depending on the device, it's better to change according to their need on the Arduino side.**
+- Improve C program regarding interrupt signal and clean exit function in case of errors
 
 - Read from a start address to a end address
 
 - Read smaller memory EEPROMs, some only uses 8 bits to 10 bits addressing (sending the device address+MSB and then LSB)
 
-- ~~Some type of handshake to say that the Arduino is ready to start receiving the input, confirm it and then send the data. Something  like two-way handshake~~ Not really needed!?
 
 
 License
