@@ -31,14 +31,12 @@
 
 #include "eeprom.h"
 
-int print;
-int ctrlc = 0;
+int print, ctrlc = 0;
 char *file_name = NULL;
 
 void handle_sig(int signum)
 {
 	ctrlc = 1;
-	printf("\nInterrupted by CTRL^C\n");
 }
 
 struct sigaction int_handler = {
@@ -77,7 +75,7 @@ static void print_usage(const char *program_name, int flag_print_eeprom)
 	printf("  -t, --tty=/dev/*         tty the arduino is connected to.\n");
 	printf("  -b, --baudrate=N         baudrate of tty. Default sketch is 115200.\n");
 	printf("  -n, --num-bytes=N[k]     the number of bytes or Kbytes to read from the tty.\n");
-	printf("  -d, --dev-type=type      read datasheet and see compatible type then set number 1-3 [REQUIRED FOR READING MORE THAN 64Kbytes].\n");
+	printf("  -d, --dev-type=type      read datasheet and see compatible type then set number 1 or 2 [REQUIRED IF NOT DEFAULT].\n");
 	printf("  -o, --output-file=FILE   name to save FILE. Default is \"eeprom.bin\".\n");
 	printf("  -f, --format=format      output format (a = ascii, d = dec, h = hex). Default is hexadecimal.\n");
 	printf("  -p, --print=y/n          print the read content to screen. Default is yes.\n");
@@ -85,10 +83,12 @@ static void print_usage(const char *program_name, int flag_print_eeprom)
 	if(flag_print_eeprom)
 		print_eeprom();
 	printf("\nExamples:\n");
-	printf("  %s -t /dev/ttyACM0 -n 2k\n", program_name);
-	printf("  %s -t /dev/ttyACM0 -n 512 -o teste.bin\n", program_name);
-	printf("  %s -t /dev/ttyACM0 -n 128K -d 2\n", program_name);
-	printf("  %s -t /dev/ttyACM0 -n 256K -d 1 -o file.hex\n", program_name);
+	printf("  %s -t /dev/ttyACM0 -n 2k -p n -d 1\n", program_name);
+	printf("  %s -t /dev/ttyACM0 -n 128k -o teste.bin\n", program_name);
+	printf("  %s -t /dev/ttyACM0 -n 128K -d 2 -o teste.bin\n", program_name);
+	printf("  %s -t /dev/ttyACM0 -n 256K -p n\n", program_name);
+	printf("  %s -t /dev/ttyACM0 -n 64k -p n\n", program_name);
+	printf("  %s -t /dev/ttyACM0 -n 64\n", program_name);
 	exit(EXIT_FAILURE);
 }
 
@@ -117,7 +117,6 @@ unsigned long get_bytes(char* bytes)
 	}
 	else
 		res = atoi(bytes);
-	printf("================================= %ld %ld\n", res, res*8);
 	return res;
 }
 
@@ -134,10 +133,9 @@ int eeprom_read(int fd, unsigned long num_bytes, char format)
 	unsigned char byte;
 	FILE *fp = fopen(file_name, "w");
 
-	while (!ctrlc) {
+	while((i < num_bytes) && !ctrlc) {
 		if (read(fd, &byte, sizeof(byte)) < 0) {
-			if (errno != EINTR)
-				printf("\nError while reading, errno: %d\n", errno);
+			printf("\nError while reading, errno: %s\n", strerror(errno));
 			break;
 		}
 
@@ -156,19 +154,18 @@ int eeprom_read(int fd, unsigned long num_bytes, char format)
 					printf("0x%06lx: 0x%02x\n", i, byte);
 					break;
 			}
-		}
+		} else printf("\r%ld %%", ((i*100)/(num_bytes-1)));
 		
 		if (fwrite(&byte, sizeof(byte), 1, fp) < 0) {
-			if (errno != EINTR)
-				printf("\nError while writing, errno: %d\n", errno);
+			printf("\nError while writing, errno: %s\n", strerror(errno));
 			break;
 		}
 		
 		i++;
-		if (i == num_bytes)
-			break;
-
 	}
+	if(!print)
+		printf("\n");
+	
 	fclose(fp);
 	
 	return errno;
@@ -267,9 +264,12 @@ int main(int argc, char *argv[])
 		print_usage(argv[0], 0);
 	}
 	
-	if (((num_bytes > 65536) &&  !dev_type) || (dev_type > 5)) {
-		printf("\nSorry, you did not provide the device type "
-			"required for reading more than 64Kbytes.\n");
+	if ((dev_type < 0) || (dev_type > 2)) {
+		printf("\nSorry, invalid device type for reading.\n");
+		print_usage(argv[0], 1);
+	}
+	else if((dev_type == 1) && (num_bytes > 2048)) {
+		printf("ERROR: trying to read more than available memory!!!\n");
 		print_usage(argv[0], 1);
 	}
 
@@ -297,8 +297,6 @@ int main(int argc, char *argv[])
 		       "h = hexadecimal.\n");
 	if(!print_user)
 		printf("You did not provide a print option, defaulting to yes.\n");
-	//if((num_bytes <= 65536) && dev_type)
-		//printf("Ignoring device type defined!!!\n");
 
 	/* Install CTRL^C signal handler */
 	sigaction(SIGINT, &int_handler, 0);
@@ -343,9 +341,6 @@ int main(int argc, char *argv[])
 	/* More time because UN0 resets on opening device
 	 * maybe using 10uF cap between reset and ground */
 
-	if(print)
-		printf("Starting to read.\n\n");
-
 	if ((transmit_num_bytes(fd, num_bytes, dev_type)) < 0) {
 		printf("Error while transfering dump size to arduino: %s\n", strerror(errno));
 		tcsetattr(fd, TCSANOW, &tty_attr_orig);
@@ -354,8 +349,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (eeprom_read(fd, num_bytes, format) != 0) {
-		printf("Going to remove file with errors\n"); /* even with CTRL^C */
-
+		printf("Going to remove file with errors\n");
 		if (remove(file_name) != 0)
 			printf("Unable to delete %s: %s\n", file_name, strerror(errno));
 	}
