@@ -1,3 +1,10 @@
+#include <Dhcp.h>
+#include <Dns.h>
+#include <Ethernet.h>
+#include <EthernetClient.h>
+#include <EthernetServer.h>
+#include <EthernetUdp.h>
+
 #include <Wire.h>
 
 #define ADDRESS 0x50
@@ -23,10 +30,10 @@ void loop() {
     dev_type = Serial.read();   
 
     switch (dev_type) {
-    case 1:
+    case 0x01:
       read_small_eeprom(0, num_bytes);
       break;
-    case 2:
+    case 0x02:
       if(num_bytes <= 65536) //just in case of misunderstading
         read_large_eeprom(ADDRESS, 0, num_bytes);
       else {
@@ -34,7 +41,12 @@ void loop() {
         read_large_eeprom((ADDRESS | 4), 65536, num_bytes);
       }
       break;
+    case 0x81:
+      write_small_eeprom(0, num_bytes);
+      break;
+      
     default:
+    /*
       if(num_bytes <= 65536) // to read up to 64Kbytes
         read_large_eeprom(ADDRESS, 0, num_bytes);
       else {
@@ -54,6 +66,7 @@ void loop() {
           }
         }
       }
+     */ 
       break;
     }
   }
@@ -92,5 +105,29 @@ void read_small_eeprom(unsigned long first, unsigned long bytes) {
     if(Wire.available()) value = Wire.read();
     Serial.write(value);
   }
+}
+
+void write_small_eeprom(unsigned long first, unsigned long bytes) {
+  byte value; 
+  unsigned long add;
+
+  Serial.setTimeout(10000);
+  
+  for(add = first; add < bytes; add++) {
+    
+    Serial.readBytes(&value, 1);
+    
+    do {
+      Wire.beginTransmission(byte(ADDRESS | ((add >> 8) & 0x07)));
+      Wire.write(byte(add & 0xFF)); // just LSB matter
+      Wire.write(value);
+    } 
+    while (Wire.endTransmission()!=0);
+
+    Serial.write(byte(add));
+    Serial.write(byte(value));
+  }
+
+  Serial.setTimeout(1000);  
 }
 

@@ -79,6 +79,8 @@ static void print_usage(const char *program_name, int flag_print_eeprom)
 	printf("  -o, --output-file=FILE   name to save FILE. Default is \"eeprom.bin\".\n");
 	printf("  -f, --format=format      output format (a = ascii, d = dec, h = hex). Default is hexadecimal.\n");
 	printf("  -p, --print=y/n          print the read content to screen. Default is yes.\n");
+	printf("  -w, --write              perform a write operation.\n");
+	printf("  -i, --input-file=FILE    name to source FILE. Default is \"eeprom.bin\".\n");
 	printf("  -h, --help               print this screen.\n");
 	if(flag_print_eeprom)
 		print_eeprom();
@@ -171,6 +173,69 @@ int eeprom_read(int fd, unsigned long num_bytes, char format)
 	return errno;
 }
 
+int eeprom_write(int fd, unsigned long num_bytes, char format)
+{
+	errno = 0;
+	unsigned long i = 0;
+	unsigned char byte, ck_byte, ck_add;
+	FILE *fp = fopen(file_name, "r");
+	
+	if (fp==NULL) {
+		printf("\nError while opening, errno: %s\n", strerror(errno));
+		return errno;
+	}
+
+	while((i < num_bytes) && !ctrlc) {
+		if (fread(&byte, sizeof(byte), 1, fp) < 0) {
+			printf("\nError while reading, errno: %s\n", strerror(errno));
+			break;
+		}
+		
+		if(print) {
+			switch (format) {
+				case 'a':
+					printf("0x%06lx: %c\n", i, byte);
+					break;
+				case 'd':
+					printf("0x%06lx: %02d\n", i, byte);
+					break;
+				case 'h':
+					printf("0x%06lx: 0x%02x\n", i, byte);
+					break;
+				default:
+					printf("0x%06lx: 0x%02x\n", i, byte);
+					break;
+			}
+		} else printf("\r%ld %%", ((i*100)/(num_bytes-1)));
+		
+		if (write(fd, &byte, sizeof(byte)) < 0) {
+			printf("\nError while writing, errno: %s\n", strerror(errno));
+			break;
+		}
+        if (read(fd, &ck_add, sizeof(byte)) < 0) {
+			printf("\nError while reading, errno: %s\n", strerror(errno));
+			break;
+		}
+        if (read(fd, &ck_byte, sizeof(byte)) < 0) {
+			printf("\nError while reading, errno: %s\n", strerror(errno));
+			break;
+		}
+		if ((ck_byte!=byte)||(ck_add!=(i&0xFF))) {
+		    printf("\nError in communication protocol, sent: 0x%02x received: 0x%02x address: 0x%06lx ck_address: 0x%06x\n",byte,ck_byte,i,ck_add);
+			break;
+		}
+		
+		i++;
+	}
+	if(!print)
+		printf("\n");
+	
+	fclose(fp);
+	
+	return errno;
+}
+
+
 int main(int argc, char *argv[])
 {
 	int fd, next_option, baudrate = B115200;
@@ -178,13 +243,13 @@ int main(int argc, char *argv[])
 	char format = 0;
 	char *tty_name = NULL;
 	unsigned char dev_type = 0;
-	unsigned char baudrate_user = 0, format_user = 0, file_name_user = 0, print_user = 0;
+	unsigned char baudrate_user = 0, format_user = 0, o_file_name_user = 0, i_file_name_user = 0, print_user = 0, write_user = 0;
 	
 	struct termios tty_attr, tty_attr_orig;
 	speed_t i_speed, o_speed, user_speed;
 
 	extern char *optarg;
-	const char* short_options = "t:b:n:d:o:f:p:h";
+	const char* short_options = "t:b:n:d:o:f:p:wi:h";
 	const struct option long_options[] = {
 		{ "tty",          required_argument, NULL, 't' },
 		{ "baudrate",     required_argument, NULL, 'b' },
@@ -193,6 +258,8 @@ int main(int argc, char *argv[])
 		{ "output-name",  required_argument, NULL, 'o' },
 		{ "format",       required_argument, NULL, 'f' },
 		{ "print",        required_argument, NULL, 'p' },
+		{ "write",        no_argument, NULL, 'w' },
+		{ "input-name",   required_argument, NULL, 'i' },
 		{ "help",         no_argument,       NULL, 'h' },
 		{ 0,              0,                 0,     0  }
 	};
@@ -222,7 +289,7 @@ int main(int argc, char *argv[])
 				break;
 			case 'o':
 				file_name = optarg;
-				file_name_user = 1;
+				o_file_name_user = 1;
 				break;
 			case 'f':
 				format = optarg[0];
@@ -232,6 +299,13 @@ int main(int argc, char *argv[])
 				print = print_option(optarg);
 				print_user = 1;
 				break;
+			case 'w':
+				write_user = 1;
+				break;
+			case 'i':
+				file_name = optarg;
+				i_file_name_user = 1;
+				break;	
 			case 'h':
 				print_usage(argv[0], 1);
 				break;
@@ -260,7 +334,7 @@ int main(int argc, char *argv[])
 
 	if (!num_bytes) {
 		printf("\nSorry, you did not provide how many bytes you "
-		       "want to read from the EEPROM.\n\n");
+		       "want to read/write from/to the EEPROM.\n\n");
 		print_usage(argv[0], 0);
 	}
 	
@@ -279,9 +353,25 @@ int main(int argc, char *argv[])
 		printf("\nSorry, invalid output format specified.\n\n");
 		print_usage(argv[0], 0);
 	}
-
-	if (!file_name)
-		file_name = "eeprom.bin";
+	
+	if (i_file_name_user && o_file_name_user) {
+	    printf("\nSorry, you cannot specify input and output file simultaneously.\n");
+		print_usage(argv[0], 1);
+	}
+	
+    if (write_user) {
+		if (o_file_name_user) {
+			printf("\nSorry, you cannot specify output file while writing.\n");
+			print_usage(argv[0], 1);
+	    }
+    }
+	else {
+		if (i_file_name_user) {
+			printf("\nSorry, you cannot specify input file while reading.\n");
+			print_usage(argv[0], 1);
+	    }
+	}
+	
 
 	if (!print_user)
 		print = 1;
@@ -289,9 +379,21 @@ int main(int argc, char *argv[])
 	/* After setup parameters print if any fallback to default */
 	if (!baudrate_user)
 		printf("You did not provide a baudrate, defaulting to 115200.\n");
-	if (!file_name_user)
+	if (write_user) {
+		if (!i_file_name_user) {
+			printf("You did not provide a input name, defaulting to "
+		       "\"eeprom.bin\".\n");
+			file_name = "eeprom.bin";
+		}
+	}
+	else {
+	 if (!o_file_name_user) {
 			printf("You did not provide a output name, defaulting to "
 		       "\"eeprom.bin\".\n");
+			file_name = "eeprom.bin";
+		}
+    }
+	
 	if (!format_user)
 		printf("You did not specified a output format, defaulting to "
 		       "h = hexadecimal.\n");
@@ -341,18 +443,25 @@ int main(int argc, char *argv[])
 	/* More time because UN0 resets on opening device
 	 * maybe using 10uF cap between reset and ground */
 
-	if ((transmit_num_bytes(fd, num_bytes, dev_type)) < 0) {
+	if ((transmit_num_bytes(fd, num_bytes, dev_type | (write_user << 7))) < 0) {
 		printf("Error while transfering dump size to arduino: %s\n", strerror(errno));
 		tcsetattr(fd, TCSANOW, &tty_attr_orig);
 		close(fd);
 		return EXIT_FAILURE;
 	}
 
-	if (eeprom_read(fd, num_bytes, format) != 0) {
+	if (write_user) {
+	  if (eeprom_write(fd, num_bytes, format) != 0) {
+		printf("Write operation failed\n");
+	  }
+	}
+	else {
+	  if (eeprom_read(fd, num_bytes, format) != 0) {
 		printf("Going to remove file with errors\n");
 		if (remove(file_name) != 0)
 			printf("Unable to delete %s: %s\n", file_name, strerror(errno));
-	}
+	  }
+	}  
 
 	/* Revert to original tty config */
 	if(tcsetattr(fd, TCSANOW, &tty_attr_orig) == -1)
