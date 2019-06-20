@@ -1,6 +1,26 @@
-# arduino-i2c-read-eeprom
+# arduino-i2c-rw-eeprom
 
 Dump an I2C EEPROM to your PC via an Arduino
+
+Added support for writing from file to memory, check options -w and -i <input_file>
+
+Examples:
+
+read 24C16 EEPROM and print on terminal
+
+`./i2c_rw_eeprom -d 1 -t /dev/ttyUSB0 -n 2048 ; hexdump -C eeprom.bin`
+
+write 24C16 EEPROM
+
+`./i2c_rw_eeprom -d 1 -t /dev/ttyUSB0 -n 2048 -w -i eeprom.bin`
+
+read 24C02 EEPROM and print on terminal
+
+`./i2c_rw_eeprom -d 1 -t /dev/ttyUSB0 -n 256 ; hexdump -C eeprom.bin`
+
+write 24C02 EEPROM
+
+`./i2c_rw_eeprom -d 1 -t /dev/ttyUSB0 -n 256 -w -i eeprom.bin`
 
 
 Table of contents
